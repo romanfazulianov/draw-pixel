@@ -1,0 +1,19 @@
+$height: 80px;
+
+.draw-pixel_edit-field {
+  margin: 1vh;
+  display: flex;
+  width: 8*$height;
+  height: 8*$height;
+  flex-wrap: wrap;
+
+  .pixel {
+    display: flex;
+    width: $height;
+    height: $height;
+    background: black;
+    &:hover {
+      background: red;
+    }
+  }
+}

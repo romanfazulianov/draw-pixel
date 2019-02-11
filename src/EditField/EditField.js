@@ -29,58 +29,42 @@ class EditField extends Component {
     if(el) {
       this.field = el;
       this.startDim = this.field.getBoundingClientRect();
-      console.log(this.startDim)
     }
   };
 
   fill = (x, y) => {
-    const index = this.width * (y + 1) + x;
+    const index = this.width * y  + x;///TODO XXXX HUGE DEOPTIMIZATION!!!! collect into array and fill in 1 setState
     this.setState((state) => ({[index]: {...state[index], color: 'red'}}))
   };
 
   calculate (xl, yl) {
-    console.log ('__start___', {xl, yl})
     const xt = ((xl - this.startDim.x) / this.pixelSize) | 0;
     const yt = ((yl - this.startDim.y) / this.pixelSize) | 0;
     this.fill(xt, yt);
 
     if (this.lastY != null && this.lastX != null) {
       const equ = createLineEquation(this.lastX, this.lastY, xt, yt);
-      let run = this.lastX - xt;
-      const step = run !== 0 ? run / Math.abs(run) : 0;
-      console.log({px: this.lastX, py: this.lastY, xt, yt, run, step})
-      if (step === 0) {
+      if (equ.x) {
         const startY = Math.min(this.lastY, yt);
         const endY = Math.max(this.lastY, yt);
-        for (let yp = startY; yp <= endY; yp++) {
-          console.log('vline', {xt, yp})
-          this.fill(xt, yp)
+        for (let y = startY + 1; y < endY; y++) {
+          const x = equ.x(y) | 0;
+          this.fill(x, y)
         }
       } else {
-        let prevY = yt;
-        for (let x = xt; x <= this.lastX; x = x + step) {
+        const startX = Math.min(this.lastX, xt);
+        const endX = Math.max(this.lastX, xt);
+        for (let x = startX + 1; x < endX; x++) {
           const y = equ.y(x) | 0;
           this.fill(x, y);
-          if (prevY - y >= 1) {
-            const startY = Math.min(prevY, y);
-            const endY = Math.max(prevY, y);
-            for (let yp = startY; yp <= endY; yp++) {
-              console.log('vline t', {xt, yp})
-              this.fill(x, yp)
-            }
-          }
-          prevY = y;
         }
       }
-      console.log('_end__', this.lastX - xt, this.lastY - yt)
-
     }
     this.lastX = xt;
     this.lastY = yt;
-
   }
-  height = 32;
-  width = 48;
+  height = 200;
+  width = 240;
   originalWidth = 1200;
   pixelSize = (this.originalWidth / this.width ) | 0;
 

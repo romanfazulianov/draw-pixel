@@ -4,10 +4,9 @@ import Pixel from './Pixel';
 import {createLineEquation} from '../math/lineTo';
 
 class EditField extends Component {
-  state = {};
+  state = { field: [], draw: false};
   startDraw = (event) => {
-    document.getElementsByTagName("body")[0].style['user-select'] = 'none';
-    document.addEventListener('mousemove', this.draw);
+    document.addEventListener('mousemove', this.draw, {passive: false});
     this.field.addEventListener('mouseleave', this.stopDraw);
     this.draw({...event});
     this.setState((state) => ({draw: true}));
@@ -17,8 +16,7 @@ class EditField extends Component {
   draw = event => this.calculate(event.clientX, event.clientY);
   stopDraw = (event) => {
     if (this.state.draw) {
-      document.getElementsByTagName("body")[0].style['user-select'] = null;
-      document.removeEventListener('mousemove', this.draw);
+      document.removeEventListener('mousemove', this.draw, {passive: false});
       this.field.removeEventListener('mouseleave', this.stopDraw);
       this.setState((state) => ({draw: false}));
       this.lastX = null;
@@ -32,36 +30,45 @@ class EditField extends Component {
     }
   };
 
-  fill = (x, y) => {
-    const index = this.width * y  + x;///TODO XXXX HUGE DEOPTIMIZATION!!!! collect into array and fill in 1 setState
-    this.setState((state) => ({[index]: {...state[index], color: 'red'}}))
+  color = 'black';
+
+  fill = (x) => {
+    this.setState((state) => x.reduce((acc, i) => {
+      acc[i] = {
+        ...acc[i],
+        color: this.color
+      };
+      return acc;
+    }, []));
   };
 
-  calculate (xl, yl) {
-    const xt = ((xl - this.startDim.x) / this.pixelSize) | 0;
-    const yt = ((yl - this.startDim.y) / this.pixelSize) | 0;
-    this.fill(xt, yt);
+  indexate = (x, y) => this.width * y  + x;
 
-    if (this.lastY != null && this.lastX != null) {
-      const equ = createLineEquation(this.lastX, this.lastY, xt, yt);
-      if (equ.x) {
-        const startY = Math.min(this.lastY, yt);
-        const endY = Math.max(this.lastY, yt);
-        for (let y = startY + 1; y < endY; y++) {
-          const x = equ.x(y) | 0;
-          this.fill(x, y)
-        }
-      } else {
-        const startX = Math.min(this.lastX, xt);
-        const endX = Math.max(this.lastX, xt);
-        for (let x = startX + 1; x < endX; x++) {
-          const y = equ.y(x) | 0;
-          this.fill(x, y);
+  calculate (xl, yl) {
+      const xt = ((xl - this.startDim.x) / this.pixelSize) | 0;
+      const yt = ((yl - this.startDim.y) / this.pixelSize) | 0;
+      const state = {[this.indexate(xt, yt)]: true};
+      if (this.lastY != null && this.lastX != null) {
+        const equ = createLineEquation(this.lastX, this.lastY, xt, yt);
+        if (equ.x) {
+          const startY = Math.min(this.lastY, yt);
+          const endY = Math.max(this.lastY, yt);
+          for (let y = startY + 1; y < endY; y++) {
+            const x = equ.x(y) | 0;
+            state[this.indexate(x, y)] = true;
+          }
+        } else {
+          const startX = Math.min(this.lastX, xt);
+          const endX = Math.max(this.lastX, xt);
+          for (let x = startX + 1; x < endX; x++) {
+            const y = equ.y(x) | 0;
+            state[this.indexate(x, y)] = true;
+          }
         }
       }
-    }
-    this.lastX = xt;
-    this.lastY = yt;
+      this.lastX = xt;
+      this.lastY = yt;
+      this.fill(Object.keys(state))
   }
   height = 200;
   width = 240;
@@ -71,7 +78,7 @@ class EditField extends Component {
   render() {
     const field = [];
     const fieldSize = this.width * this.height;
-    while (field.length < fieldSize) {
+    for (let g = 0; g < fieldSize; g++) {
       field.push(
           <Pixel
               key={field.length}
@@ -79,6 +86,7 @@ class EditField extends Component {
               color="transparent"
               {...this.state[field.length]}/>)
     }
+
     return (
         <div
             ref={this.getRef}

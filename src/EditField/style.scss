@@ -4,6 +4,9 @@ $height: 80px;
   margin: 1vh;
   display: flex;
   flex-wrap: wrap;
+  position: relative;
+  box-sizing: content-box;
+  border: 1px solid green;
 
   .pixel {
   }

@@ -5,7 +5,9 @@ class Pixel extends PureComponent {
   render() {
     const {
       scale,
-      color
+      color,
+      x,
+      y
     } = this.props;
 
     return (
@@ -14,6 +16,9 @@ class Pixel extends PureComponent {
             style={{
               height: scale,
               width: scale,
+              top: y * scale,
+              left: x * scale,
+              position: 'absolute',
               background: color //will use hsla
             }}/>
     );

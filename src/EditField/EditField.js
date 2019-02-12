@@ -4,95 +4,123 @@ import Pixel from './Pixel';
 import {createLineEquation} from '../math/lineTo';
 
 class EditField extends Component {
-  state = { field: [], draw: false};
+  state = { field: {} };
   startDraw = (event) => {
-    document.addEventListener('mousemove', this.draw, {passive: false});
+    this.field.addEventListener('mousemove', this.draw);
     this.field.addEventListener('mouseleave', this.stopDraw);
-    this.draw({...event});
-    this.setState((state) => ({draw: true}));
-    this.calculate(event.clientX, event.clientY);
-
+    this.field.addEventListener('mouseup', this.stopDraw);
+    this.drawing = true;
+    this.calculate(event.pageX, event.pageY);
   };
-  draw = event => this.calculate(event.clientX, event.clientY);
+  draw = event => {
+    event.stopPropagation();
+    const x = event.pageX;
+    const y = event.pageY;
+    this.calculate(x, y);
+  };
   stopDraw = (event) => {
-    if (this.state.draw) {
-      document.removeEventListener('mousemove', this.draw, {passive: false});
-      this.field.removeEventListener('mouseleave', this.stopDraw);
-      this.setState((state) => ({draw: false}));
+    if (this.drawing) {
       this.lastX = null;
       this.lastY = null;
+      this.field.removeEventListener('mousemove', this.draw);
+      this.field.removeEventListener('mouseleave', this.stopDraw);
+      this.field.removeEventListener('mouseup', this.stopDraw);
+      this.drawing = false;
     }
   };
+  restartDraw(event) {
+    this.pause = false;
+    clearTimeout(this.tId)
+  }
+  pauseDraw(event) {
+    this.pause = true;
+
+    this.lastX = null;
+    this.lastY = null;
+  }
   getRef = (el) => {
+    window.max = 0;
     if(el) {
       this.field = el;
       this.startDim = this.field.getBoundingClientRect();
+      this.field.addEventListener('mousedown', this.startDraw);
+    } else {
+      this.field.removeEventListener('mousedown', this.startDraw);
     }
   };
 
   color = 'black';
 
   fill = (x) => {
-    this.setState((state) => x.reduce((acc, i) => {
-      acc[i] = {
-        ...acc[i],
-        color: this.color
-      };
-      return acc;
-    }, []));
+    window.max = Math.max(window.max, Object.values(x).length)
+    console.log('added', Object.values(x).length, 'points');
+    this.setState((state) => ({field: {...state.field, ...x}}), () => {
+      console.log(Object.values(this.state.field).length, 'points')
+    });
   };
 
   indexate = (x, y) => this.width * y  + x;
 
-  calculate (xl, yl) {
-      const xt = ((xl - this.startDim.x) / this.pixelSize) | 0;
-      const yt = ((yl - this.startDim.y) / this.pixelSize) | 0;
-      const state = {[this.indexate(xt, yt)]: true};
-      if (this.lastY != null && this.lastX != null) {
-        const equ = createLineEquation(this.lastX, this.lastY, xt, yt);
+  calculate = (xl, yl) => {
+    const lastX = this.lastX;
+    const lastY = this.lastY;
+    const xt = Math.min(Math.max(((xl - this.startDim.left) / this.pixelSize) | 0, 0), this.width - 1);
+    const yt = Math.min(Math.max(((yl - this.startDim.top) / this.pixelSize) | 0, 0), this.height - 1);
+    this.lastX = xt;
+    this.lastY = yt;
+    requestAnimationFrame(() => {
+      const state = {};
+      const i = this.indexate(xt, yt);
+      state[i] = <Pixel
+          key={i}
+          x={xt}
+          y={yt}
+          scale={this.pixelSize}
+          color={this.color}/>;
+      if (lastY != null && lastX != null) {
+        const equ = createLineEquation(lastX, lastY, xt, yt);
         if (equ.x) {
-          const startY = Math.min(this.lastY, yt);
-          const endY = Math.max(this.lastY, yt);
+          const startY = Math.min(lastY, yt);
+          const endY = Math.max(lastY, yt);
           for (let y = startY + 1; y < endY; y++) {
             const x = equ.x(y) | 0;
-            state[this.indexate(x, y)] = true;
+            const i = this.indexate(x, y);
+            state[i] = <Pixel
+                key={i}
+                x={x}
+                y={y}
+                scale={this.pixelSize}
+                color={this.color}/>;
           }
         } else {
-          const startX = Math.min(this.lastX, xt);
-          const endX = Math.max(this.lastX, xt);
+          const startX = Math.min(lastX, xt);
+          const endX = Math.max(lastX, xt);
           for (let x = startX + 1; x < endX; x++) {
             const y = equ.y(x) | 0;
-            state[this.indexate(x, y)] = true;
+            const i = this.indexate(x, y);
+            state[i] = <Pixel
+                key={i}
+                x={x}
+                y={y}
+                scale={this.pixelSize}
+                color={this.color}/>;
           }
         }
       }
-      this.lastX = xt;
-      this.lastY = yt;
-      this.fill(Object.keys(state))
-  }
-  height = 200;
-  width = 240;
-  originalWidth = 1200;
+      this.fill(state)
+    })
+  };
+  height = 320;
+  width = 320;
+  originalWidth = 640;
   pixelSize = (this.originalWidth / this.width ) | 0;
 
   render() {
-    const field = [];
-    const fieldSize = this.width * this.height;
-    for (let g = 0; g < fieldSize; g++) {
-      field.push(
-          <Pixel
-              key={field.length}
-              scale={this.pixelSize}
-              color="transparent"
-              {...this.state[field.length]}/>)
-    }
-
+    const field = Object.values(this.state.field);
     return (
         <div
             ref={this.getRef}
             className="draw-pixel_edit-field"
-            onMouseDownCapture={this.startDraw}
-            onMouseUpCapture={this.stopDraw}
             style={{ width: this.originalWidth, height: this.height * this.pixelSize }}>
           {field}
         </div>

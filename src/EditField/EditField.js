@@ -28,16 +28,6 @@ class EditField extends Component {
       this.drawing = false;
     }
   };
-  restartDraw(event) {
-    this.pause = false;
-    clearTimeout(this.tId)
-  }
-  pauseDraw(event) {
-    this.pause = true;
-
-    this.lastX = null;
-    this.lastY = null;
-  }
   getRef = (el) => {
     window.max = 0;
     if(el) {

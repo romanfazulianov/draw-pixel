@@ -10,8 +10,9 @@ const scale = 2;
 let drawing = false;
 const color = 'black';
 let last = null;
-const workerQ = [];
-let working = false;
+let left;
+let top;
+
 const indexate = (x, y) => width * y  + x;
 
 const createLine = (line = {}) => ({
@@ -40,41 +41,20 @@ const fill = (x) => {
   }
 };
 
-const worker = new Worker('worker.js');
-
-worker.onmessage = ({data: result}) => {
-  if (drawing) {
-    if (workerQ.length > 0) {
-      const [{scale, width, height}, {left, top}, point] = workerQ.shift();
-      worker.postMessage([{scale, width, height}, {left, top}, point, last]);
-      last = point;
-    } else {
-      working = false;
-    }
-  } else {
-    working = false;
-  }
+const onResult = function ({data: result}) {
   const { addPixelToLine, getLine } = createLine();
   result.forEach(addPixelToLine);
   fill(getLine());
-};
-
-const postMessage = ([{scale, width, height}, {left, top}, point]) => {
-  if (working) {
-    workerQ.push([{scale, width, height}, {left, top}, point]);
-  } else {
-    working = true;
-    worker.postMessage([{scale, width, height}, {left, top}, point, last]);
-    last = point;
-  }
+  this.terminate();
 };
 
 const calculate = (point) => {
-  const { left, top } = field.getBoundingClientRect();
 
-  const workerData = [{scale, width, height}, {left, top}, point];
-
-  postMessage(workerData);
+  //spawn threads works slower then keep
+  const worker = new Worker('worker.js');
+  worker.onmessage = onResult;
+  worker.postMessage([{scale, width, height}, {left, top}, point, last]);
+  last = point;
 };
 
 const draw = event => {
@@ -107,10 +87,11 @@ export const createDrawer = (el, updater) => {
   field.addEventListener('mousemove', draw);
   field.addEventListener('mouseleave', stopDraw);
   field.addEventListener('mouseup', stopDraw);
-
+  const { left: l, top: t } = field.getBoundingClientRect();
+  left = l;
+  top = t;
   return {
     end: () => {
-      worker.terminate();
       field.removeEventListener('mousedown', startDraw);
       field.removeEventListener('mousemove', draw);
       field.removeEventListener('mouseleave', stopDraw);

@@ -1,9 +1,9 @@
-import { createPixel } from './EditField/createPixel';
+import {createPixel, updatePixel} from './EditField/createPixel';
 let field;
 let pixels = {};
-const height = 128;
-const width = 128;
-const scale = 4;
+const height = 320;
+const width = 320;
+const scale = 2;
 let drawing = false;
 const color = 'black';
 let last = null;
@@ -13,38 +13,42 @@ let left;
 let top;
 // let max = 0;
 const fill = (x) => {
-  Object.keys(x).forEach(key => {
-    pixels[key] = createPixel(x[key], pixels[key], field, scale)
-  });
-  // max = Math.max(max, Object.keys(x).length)
-  // console.log('max', max)
-  // console.log('total', Object.keys(pixels).length)
+//  console.log(document.styleSheets);//create a rules in body!!! without using inlines
+  requestAnimationFrame(() => {
+    const fragment = document.createElement('div');
+    Object.keys(x).forEach(key => {
+      pixels[key] = pixels[key]
+          ? updatePixel(x[key], pixels[key], scale)
+          : createPixel(x[key], fragment, scale);
+    });
+    field.appendChild(fragment)
+  })
 };
 
 const worker = new Worker('nativeWorker.js');
 
 worker.onmessage = ({data: result}) => {
-  if (workerQ.length > 0) {
-    const point = workerQ.shift();
-    worker.postMessage([{scale, color, width, height}, {left, top}, point, last]);
-    last = point;
-  } else {
+  fill(result);
+  if (workerQ.length === 0) {
     working = false;
-    if(!drawing) {
+    if (!drawing) {
       last = null;
     }
+    return;
   }
-  fill(result);
+  const point = workerQ.shift();
+  worker.postMessage([{scale, color, width, height}, {left, top}, point, last]);
+  last = point;
 };
 
 const postMessage = (point) => {
   if (working) {
     workerQ.push(point);
-  } else {
-    working = true;
-    worker.postMessage([{scale, color, width, height}, {left, top}, point, last]);
-    last = point;
+    return;
   }
+  working = true;
+  worker.postMessage([{scale, color, width, height}, {left, top}, point, last]);
+  last = point;
 };
 
 const draw = event => {

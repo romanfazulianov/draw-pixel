@@ -1,28 +1,39 @@
 import {createPixel, updatePixel} from './EditField/createPixel';
-let field;
+// move to worker
 let pixels = {};
 const height = 320;
 const width = 320;
 const scale = 2;
-let drawing = false;
 const color = 'black';
 let last = null;
-const workerQ = [];
-let working = false;
 let left;
 let top;
+//end of list
+// leave here only dom
+const workerQ = [];
+let working = false;
+let drawing = false;
+let field;
+let lD;
+let pixelsQ = {};
+
+
+const updateCycleStart = () => {
+  requestAnimationFrame(() => {
+    // const fragment = document.createElement('div');
+    Object.keys(pixelsQ).forEach(key => {
+      pixels[key] = pixels[key]
+          ? updatePixel(pixelsQ[key], pixels[key], scale)
+          : createPixel(pixelsQ[key], field, scale);
+    });
+    pixelsQ = {};
+    if (drawing || working) updateCycleStart();
+  })
+};
+
 // let max = 0;
 const fill = (x) => {
-//  console.log(document.styleSheets);//create a rules in body!!! without using inlines
-  requestAnimationFrame(() => {
-    const fragment = document.createElement('div');
-    Object.keys(x).forEach(key => {
-      pixels[key] = pixels[key]
-          ? updatePixel(x[key], pixels[key], scale)
-          : createPixel(x[key], fragment, scale);
-    });
-    field.appendChild(fragment)
-  })
+  Object.assign(pixelsQ, x);
 };
 
 const worker = new Worker('nativeWorker.js');
@@ -52,6 +63,14 @@ const postMessage = (point) => {
 };
 
 const draw = event => {
+  if (lD) {
+    const nD = Date.now();
+    console.log(Object.keys(pixels).length, nD - lD);
+    lD = nD;
+  } else {
+    lD = Date.now();
+  }
+
   if (drawing) {
     event.stopPropagation();
     const x = event.pageX;
@@ -61,15 +80,24 @@ const draw = event => {
 };
 
 const stopDraw = (event) => {
-  if (drawing) {
+  drawing = false;
+  if (workerQ.length === 0)
+  {
     last = null;
-    drawing = false;
   }
+  lD = undefined;
+  field.removeEventListener('mousemove', draw);
+  field.removeEventListener('mouseleave', stopDraw);
+  field.removeEventListener('mouseup', stopDraw);
 };
 
 const startDraw = (event) => {
   drawing = true;
+  field.addEventListener('mousemove', draw);
+  field.addEventListener('mouseleave', stopDraw);
+  field.addEventListener('mouseup', stopDraw);
   draw(event);
+  updateCycleStart();
 };
 
 export const createDrawer = (el) => {
@@ -80,17 +108,4 @@ export const createDrawer = (el) => {
   field.style.width = width * scale + 'px';
   field.style.height = height * scale + 'px';
   field.addEventListener('mousedown', startDraw);
-  field.addEventListener('mousemove', draw);
-  field.addEventListener('mouseleave', stopDraw);
-  field.addEventListener('mouseup', stopDraw);
-
-  return {
-    end: () => {
-      worker.terminate();
-      field.removeEventListener('mousedown', startDraw);
-      field.removeEventListener('mousemove', draw);
-      field.removeEventListener('mouseleave', stopDraw);
-      field.removeEventListener('mouseup', stopDraw);
-    }
-  }
 };

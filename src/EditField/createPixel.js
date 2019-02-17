@@ -1,3 +1,6 @@
+//create etalon, clone it
+let etalon = document.createElement('div');
+etalon.className = 'pixel black s02';
 /**
  * writes a point on a field;
  * @param point {i, x, y, color }
@@ -6,10 +9,9 @@
  * @returns {*}
  */
 export function createPixel (point, field, scale) {
-  point.dom = document.createElement('div');
-  point.dom.setAttribute("id", point.i);
+  point.dom = etalon.cloneNode(true);
   point.dom.style.cssText =
-      `height: ${scale}px; width: ${scale}px; top: ${point.y * scale}px; left: ${point.x * scale}px;  position: absolute; background: ${point.color};`;
+      `top: ${point.y * scale}px; left: ${point.x * scale}px;`;
 
   field.appendChild(point.dom);
   return point;
@@ -23,14 +25,9 @@ export function createPixel (point, field, scale) {
  * @returns {*}
  */
 export function updatePixel (point, prevPoint, scale) {
-  if (point.color === prevPoint.color) {
+  if (prevPoint.dom.className === etalon.className) {
     return prevPoint;
   }
-  var clone = prevPoint.dom.cloneNode(true);
-  clone.style.cssText =
-      `height: ${scale}px; width: ${scale}px; top: ${point.y * scale}px; left: ${point.x * scale}px;  position: absolute; background: ${point.color};`;
-  prevPoint.dom.parentNode.replaceChild(clone, prevPoint.dom);
-  prevPoint.dom = null;
-  point.dom = clone;
-  return point;
+  prevPoint.dom.className = etalon.className;
+  return prevPoint;
 }

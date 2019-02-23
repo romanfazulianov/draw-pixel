@@ -20,14 +20,24 @@ let pixelsQ = {};
 
 const updateCycleStart = () => {
   requestAnimationFrame(() => {
-    // const fragment = document.createElement('div');
+    if (drawing || working) updateCycleStart();
+    const keys = Object.keys(pixelsQ);
+    if(!keys.length) return;
+    const fragment = document.createElement('div');
     Object.keys(pixelsQ).forEach(key => {
       pixels[key] = pixels[key]
-          ? updatePixel(pixelsQ[key], pixels[key], scale)
-          : createPixel(pixelsQ[key], field, scale);
+          ? updatePixel(pixels[key])
+          : createPixel(pixelsQ[key], fragment, scale);
     });
     pixelsQ = {};
-    if (drawing || working) updateCycleStart();
+    field.appendChild(fragment);
+    if (lD) {
+      const nD = Date.now();
+      console.log(Object.keys(pixels).length, (1000 / (nD - lD)).toFixed(2) + 'fps');
+      lD = nD;
+    } else {
+      lD = Date.now();
+    }
   })
 };
 
@@ -63,13 +73,6 @@ const postMessage = (point) => {
 };
 
 const draw = event => {
-  if (lD) {
-    const nD = Date.now();
-    console.log(Object.keys(pixels).length, nD - lD);
-    lD = nD;
-  } else {
-    lD = Date.now();
-  }
 
   if (drawing) {
     event.stopPropagation();

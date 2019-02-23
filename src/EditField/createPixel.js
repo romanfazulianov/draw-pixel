@@ -19,12 +19,10 @@ export function createPixel (point, field, scale) {
 
 /**
  * updates by cloning
- * @param point
  * @param prevPoint
- * @param scale
  * @returns {*}
  */
-export function updatePixel (point, prevPoint, scale) {
+export function updatePixel (prevPoint) {
   if (prevPoint.dom.className === etalon.className) {
     return prevPoint;
   }
